@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  strapi:
+    build: .
+    image: strapi-app
+    container_name: strapi-app
+    restart: unless-stopped
+    ports:
+      - '1337:1337'
+    environment:
+      HOST: 0.0.0.0
+      PORT: 1337
+      APP_KEYS: ${APP_KEYS}
+      API_TOKEN_SALT: ${API_TOKEN_SALT}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      TRANSFER_TOKEN_SALT: ${TRANSFER_TOKEN_SALT}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      DATABASE_CLIENT: sqlite
+      DATABASE_FILENAME: /app/data/data.db
+    volumes:
+      - strapi-data:/app/data
+
+volumes:
+  strapi-data:
