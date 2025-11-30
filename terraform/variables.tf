@@ -1,7 +1,3 @@
-# =============================================================================
-# General Variables
-# =============================================================================
-
 variable "aws_region" {
   description = "AWS region"
   type        = string
@@ -20,37 +16,29 @@ variable "environment" {
   default     = "prod"
 }
 
-# =============================================================================
-# VPC Variables
-# =============================================================================
-
 variable "vpc_cidr" {
   description = "CIDR block for VPC"
   type        = string
   default     = "10.0.0.0/16"
 }
 
-variable "availability_zones" {
-  description = "Availability zones"
-  type        = list(string)
-  default     = ["ap-south-1a", "ap-south-1b"]
+variable "availability_zone" {
+  description = "Availability zone"
+  type        = string
+  default     = "ap-south-1a"
 }
 
-variable "public_subnet_cidrs" {
-  description = "CIDR blocks for public subnets"
-  type        = list(string)
-  default     = ["10.0.1.0/24", "10.0.2.0/24"]
+variable "public_subnet_cidr" {
+  description = "CIDR block for public subnet"
+  type        = string
+  default     = "10.0.1.0/24"
 }
 
-variable "private_subnet_cidrs" {
-  description = "CIDR blocks for private subnets"
-  type        = list(string)
-  default     = ["10.0.10.0/24", "10.0.20.0/24"]
+variable "private_subnet_cidr" {
+  description = "CIDR block for private subnet"
+  type        = string
+  default     = "10.0.10.0/24"
 }
-
-# =============================================================================
-# RDS Variables
-# =============================================================================
 
 variable "db_instance_class" {
   description = "RDS instance class"
@@ -82,56 +70,32 @@ variable "db_max_allocated_storage" {
   default     = 100
 }
 
-# =============================================================================
-# ECS Variables
-# =============================================================================
-
 variable "ecs_cpu" {
-  description = "ECS task CPU units"
+  description = "CPU units for ECS task"
+  type        = number
+  default     = 256
+}
+
+variable "ecs_memory" {
+  description = "Memory in MB for ECS task"
   type        = number
   default     = 512
 }
 
-variable "ecs_memory" {
-  description = "ECS task memory in MB"
-  type        = number
-  default     = 1024
-}
-
 variable "ecs_desired_count" {
-  description = "Desired number of ECS tasks"
+  description = "Number of ECS tasks to run"
   type        = number
   default     = 1
 }
 
 variable "container_port" {
-  description = "Container port for Strapi"
+  description = "Port where Strapi runs"
   type        = number
   default     = 1337
 }
 
-# =============================================================================
-# S3 Variables
-# =============================================================================
-
 variable "s3_bucket_name" {
-  description = "S3 bucket name for uploads (must be globally unique)"
+  description = "S3 bucket name for uploads"
   type        = string
   default     = "strapi-uploads-ram"
-}
-
-# =============================================================================
-# Domain Variables (Optional)
-# =============================================================================
-
-variable "domain_name" {
-  description = "Domain name for the application (optional)"
-  type        = string
-  default     = ""
-}
-
-variable "create_dns_record" {
-  description = "Whether to create Route53 DNS record"
-  type        = bool
-  default     = false
 }

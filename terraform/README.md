@@ -1,202 +1,153 @@
 # Strapi Terraform Infrastructure
 
-This Terraform configuration deploys a production-ready Strapi CMS on AWS.
-
-## Architecture
+## 🏗️ Architecture
 
 ```
-                                    ┌─────────────────────────────────────────────────────────────┐
-                                    │                         VPC                                  │
-                                    │  ┌────────────────────────┐  ┌────────────────────────┐     │
-                                    │  │    Public Subnet 1     │  │    Public Subnet 2     │     │
-                   Internet         │  │    (ap-south-1a)       │  │    (ap-south-1b)       │     │
-                      │             │  │  ┌──────────────────┐  │  │  ┌──────────────────┐  │     │
-                      │             │  │  │   NAT Gateway    │  │  │  │   NAT Gateway    │  │     │
-                      ▼             │  │  └──────────────────┘  │  │  └──────────────────┘  │     │
-               ┌─────────────┐      │  │                        │  │                        │     │
-               │     ALB     │◄─────┼──┼────────────────────────┼──┼────────────────────────┼─────┤
-               └─────────────┘      │  └────────────────────────┘  └────────────────────────┘     │
-                      │             │                                                              │
-                      │             │  ┌────────────────────────┐  ┌────────────────────────┐     │
-                      │             │  │   Private Subnet 1     │  │   Private Subnet 2     │     │
-                      │             │  │    (ap-south-1a)       │  │    (ap-south-1b)       │     │
-                      ▼             │  │  ┌──────────────────┐  │  │  ┌──────────────────┐  │     │
-               ┌─────────────┐      │  │  │   ECS Fargate    │  │  │  │   RDS Postgres   │  │     │
-               │ ECS Service │──────┼──┼──►   (Strapi)       │──┼──┼──►   (Primary)      │  │     │
-               └─────────────┘      │  │  └──────────────────┘  │  │  └──────────────────┘  │     │
-                      │             │  └────────────────────────┘  └────────────────────────┘     │
-                      │             └─────────────────────────────────────────────────────────────┘
-                      │
-                      ▼
-               ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
-               │     S3      │      │   Secrets   │      │ CloudWatch  │
-               │  (Uploads)  │      │   Manager   │      │   (Logs)    │
-               └─────────────┘      └─────────────┘      └─────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                          Internet                                │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                    ┌────────▼────────┐
+                    │ Internet Gateway │
+                    └────────┬────────┘
+                             │
+┌────────────────────────────┼────────────────────────────────────┐
+│                       VPC (10.0.0.0/16)                          │
+│                                                                  │
+│  ┌───────────────────────┬──────────────────────────────────┐   │
+│  │   Public Subnet       │      Private Subnets              │   │
+│  │   (10.0.1.0/24)       │      (10.0.10.0/24 + 11.0/24)   │   │
+│  │                       │                                   │   │
+│  │  ┌─────────────────┐  │      ┌─────────────────────┐    │   │
+│  │  │  ECS Fargate    │  │      │  RDS PostgreSQL     │    │   │
+│  │  │                 │  │      │                     │    │   │
+│  │  │  Strapi App     │  │      │  Database           │    │   │
+│  │  │  Port: 1337     │◄─┼──────┤  Port: 5432         │    │   │
+│  │  │  Public IP      │  │      │  No Internet        │    │   │
+│  │  └─────────────────┘  │      └─────────────────────┘    │   │
+│  │         │              │                                   │   │
+│  └─────────┼──────────────┴──────────────────────────────────┘   │
+│            │                                                      │
+└────────────┼──────────────────────────────────────────────────────┘
+             │
+    ┌────────┴────────┐
+    │                 │
+┌───▼────┐     ┌─────▼─────┐     ┌─────────────┐
+│   S3   │     │    ECR     │     │   Secrets   │
+│ Bucket │     │  Registry  │     │   Manager   │
+└────────┘     └────────────┘     └─────────────┘
 ```
 
-## Resources Created
+## 🔄 How It Works
 
-- **VPC** with public & private subnets across 2 AZs
-- **RDS PostgreSQL** in private subnets
-- **ECR** repository for Docker images
-- **ECS Fargate** cluster and service
-- **Application Load Balancer** in public subnets
-- **S3 Bucket** for media uploads
-- **Secrets Manager** for sensitive configuration
-- **CloudWatch** logs, alarms, and dashboard
-- **IAM Roles** for ECS tasks
+### Request Flow
+1. **User** accesses Strapi via `http://<ECS-PUBLIC-IP>:1337`
+2. **Internet Gateway** routes traffic to Public Subnet
+3. **ECS Task** receives request on port 1337
+4. **Strapi Application** processes request
+5. **RDS Database** stores/retrieves data (within VPC)
+6. **S3 Bucket** serves uploaded files
+7. **Response** sent back to user
 
-## Prerequisites
+### Deployment Flow
+1. **Terraform** creates AWS infrastructure
+2. **Docker Image** built locally and pushed to **ECR**
+3. **ECS Service** pulls image from ECR
+4. **ECS Task** starts container with environment variables
+5. **Secrets Manager** injects passwords at runtime
+6. **CloudWatch** collects logs and metrics
 
-1. AWS CLI configured with appropriate credentials
-2. Terraform >= 1.0 installed
-3. Docker installed (for building images)
+## 📁 File Structure
 
-## Quick Start
-
-### 1. Initialize Terraform
-
-```bash
-cd terraform
-terraform init
+```
+terraform/
+├── versions.tf            # Provider configuration (AWS, Random)
+├── variables.tf           # Input variables (region, sizes, names)
+├── terraform.tfvars       # User-customizable values
+│
+├── vpc.tf                 # Network infrastructure
+│   ├── VPC (10.0.0.0/16)
+│   ├── Internet Gateway
+│   ├── Public Subnet (10.0.1.0/24)
+│   ├── Private Subnets (10.0.10.0/24, 10.0.11.0/24)
+│   └── Route Tables
+│
+├── security-groups.tf     # Firewall rules
+│   ├── ECS SG (allow 1337 from internet)
+│   └── RDS SG (allow 5432 from ECS only)
+│
+├── iam.tf                 # IAM roles and policies
+│   ├── ECS Execution Role (pull images, read secrets)
+│   └── ECS Task Role (S3 access, CloudWatch logs)
+│
+├── rds.tf                 # PostgreSQL database
+│   ├── DB Subnet Group
+│   ├── DB Parameter Group
+│   ├── DB Instance (db.t3.micro)
+│   └── Random Password Generator
+│
+├── ecs.tf                 # Container service
+│   ├── CloudWatch Log Group
+│   ├── ECS Cluster
+│   ├── ECS Task Definition (256 CPU / 512 MB)
+│   └── ECS Service (1 task, public IP)
+│
+├── ecr.tf                 # Docker image registry
+│   ├── ECR Repository
+│   └── Lifecycle Policy (keep 10 images)
+│
+├── s3.tf                  # File storage
+│   ├── S3 Bucket
+│   ├── Versioning
+│   ├── Encryption (AES256)
+│   ├── Public Access Policy
+│   └── CORS Configuration
+│
+├── secrets.tf             # Secure credentials storage
+│   ├── 7 Random Passwords
+│   ├── 7 Secrets in Secrets Manager
+│   └── Secret Versions
+│
+├── monitoring.tf          # Observability
+│   ├── ECS CPU Alarm
+│   ├── ECS Memory Alarm
+│   ├── RDS CPU Alarm
+│   ├── RDS Storage Alarm
+│   └── CloudWatch Dashboard
+│
+└── outputs.tf             # Post-deployment information
+    ├── VPC ID
+    ├── RDS Endpoint
+    ├── ECR Repository URL
+    ├── ECS Cluster/Service Names
+    └── Docker Build Commands
 ```
 
-### 2. Review the plan
+## 🔑 Key Components
 
-```bash
-terraform plan
-```
+### Networking
+- **VPC**: Isolated network (10.0.0.0/16)
+- **Public Subnet**: ECS tasks with internet access
+- **Private Subnets**: RDS database (no internet)
+- **Internet Gateway**: Connects VPC to internet
+- **Security Groups**: Firewall rules for ECS and RDS
 
-### 3. Apply the infrastructure
+### Compute
+- **ECS Fargate**: Serverless container platform
+- **Task Definition**: Container blueprint (image, CPU, RAM, env vars)
+- **Service**: Keeps containers running (auto-restart)
 
-```bash
-terraform apply
-```
+### Storage
+- **RDS PostgreSQL**: Managed database (backups, updates)
+- **S3 Bucket**: Object storage for uploads
+- **ECR**: Private Docker registry
 
-### 4. Build and push Docker image
+### Security
+- **IAM Roles**: Permissions for ECS to access AWS services
+- **Secrets Manager**: Encrypted password storage
+- **Security Groups**: Network-level firewall
 
-After Terraform creates the infrastructure, push your Strapi image:
-
-```bash
-# Navigate to strapi directory
-cd ../my-strapi
-
-# Login to ECR
-aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin $(terraform -chdir=../terraform output -raw ecr_repository_url | cut -d/ -f1)
-
-# Build the image
-docker build -t strapi:latest .
-
-# Tag for ECR
-docker tag strapi:latest $(terraform -chdir=../terraform output -raw ecr_repository_url):latest
-
-# Push to ECR
-docker push $(terraform -chdir=../terraform output -raw ecr_repository_url):latest
-```
-
-### 5. Force ECS deployment
-
-```bash
-aws ecs update-service \
-  --cluster $(terraform -chdir=../terraform output -raw ecs_cluster_name) \
-  --service $(terraform -chdir=../terraform output -raw ecs_service_name) \
-  --force-new-deployment \
-  --region ap-south-1
-```
-
-### 6. Access the application
-
-```bash
-# Get the ALB URL
-terraform output alb_url
-
-# Get the Strapi admin URL
-terraform output strapi_admin_url
-```
-
-## Configuration
-
-Edit `terraform.tfvars` to customize:
-
-```hcl
-# Region and naming
-aws_region   = "ap-south-1"
-project_name = "strapi"
-environment  = "prod"
-
-# RDS sizing
-db_instance_class = "db.t3.micro"
-
-# ECS sizing
-ecs_cpu    = 512   # 0.5 vCPU
-ecs_memory = 1024  # 1 GB
-
-# S3 bucket (must be globally unique)
-s3_bucket_name = "your-unique-bucket-name"
-```
-
-## Outputs
-
-| Output | Description |
-|--------|-------------|
-| `alb_url` | Application URL |
-| `strapi_admin_url` | Strapi Admin Panel URL |
-| `ecr_repository_url` | ECR repository for Docker images |
-| `rds_endpoint` | RDS database endpoint |
-| `s3_bucket_url` | S3 bucket URL for uploads |
-| `cloudwatch_dashboard_url` | CloudWatch dashboard URL |
-
-## Cost Estimation
-
-Approximate monthly costs (ap-south-1):
-
-| Resource | Estimated Cost |
-|----------|---------------|
-| RDS db.t3.micro | ~$15 |
-| ECS Fargate (0.5 vCPU, 1GB) | ~$25 |
-| NAT Gateway (2x) | ~$65 |
-| ALB | ~$20 |
-| S3 | ~$1 (varies with usage) |
-| **Total** | **~$125/month** |
-
-### Cost Optimization Tips
-
-1. Use single NAT Gateway instead of two (less HA, but cheaper)
-2. Use Fargate Spot for non-production
-3. Use smaller RDS instance for dev/staging
-
-## HTTPS Setup
-
-1. Register a domain in Route53 or add your domain
-2. Uncomment the ACM certificate in `alb.tf`
-3. Uncomment the HTTPS listener in `alb.tf`
-4. Update `domain_name` in `terraform.tfvars`
-
-## Cleanup
-
-```bash
-terraform destroy
-```
-
-**Note:** S3 bucket must be emptied before destruction.
-
-## Troubleshooting
-
-### ECS tasks not starting
-```bash
-# Check ECS service events
-aws ecs describe-services --cluster strapi-cluster --services strapi-service --region ap-south-1
-
-# Check CloudWatch logs
-aws logs tail /ecs/strapi --follow --region ap-south-1
-```
-
-### Database connection issues
-- Ensure RDS security group allows traffic from ECS security group
-- Check if DATABASE_SSL=true is set
-- Verify secrets are correctly stored in Secrets Manager
-
-### S3 upload issues
-- Verify S3 bucket policy allows public read
-- Check ECS task role has S3 permissions
-- Ensure ACL is set to null (bucket doesn't allow ACLs)
+### Monitoring
+- **CloudWatch Logs**: Application logs
+- **CloudWatch Alarms**: CPU, memory, storage alerts
+- **CloudWatch Dashboard**: Visual metrics overview

@@ -1,7 +1,3 @@
-# =============================================================================
-# Generate Random Secrets
-# =============================================================================
-
 resource "random_password" "admin_jwt_secret" {
   length  = 32
   special = false
@@ -33,42 +29,16 @@ resource "random_password" "encryption_key" {
   special = false
 }
 
-# =============================================================================
-# Secrets Manager - Strapi Secrets
-# =============================================================================
-
-resource "aws_secretsmanager_secret" "strapi" {
-  name                    = "${var.project_name}/secrets"
-  description             = "Strapi application secrets"
+resource "aws_secretsmanager_secret" "db_password" {
+  name                    = "${var.project_name}/db-password"
+  description             = "PostgreSQL database password for RDS"
   recovery_window_in_days = 7
 
   tags = {
-    Name = "${var.project_name}-secrets"
+    Name        = "${var.project_name}-db-password"
+    Environment = var.environment
+    Purpose     = "RDS database authentication"
   }
-}
-
-resource "aws_secretsmanager_secret_version" "strapi" {
-  secret_id = aws_secretsmanager_secret.strapi.id
-
-  secret_string = jsonencode({
-    DATABASE_PASSWORD    = random_password.db_password.result
-    ADMIN_JWT_SECRET     = base64encode(random_password.admin_jwt_secret.result)
-    API_TOKEN_SALT       = base64encode(random_password.api_token_salt.result)
-    APP_KEYS             = join(",", [for p in random_password.app_keys : base64encode(p.result)])
-    JWT_SECRET           = base64encode(random_password.jwt_secret.result)
-    TRANSFER_TOKEN_SALT  = base64encode(random_password.transfer_token_salt.result)
-    ENCRYPTION_KEY       = base64encode(random_password.encryption_key.result)
-  })
-}
-
-# =============================================================================
-# Individual Secrets for ECS (easier to reference)
-# =============================================================================
-
-resource "aws_secretsmanager_secret" "db_password" {
-  name                    = "${var.project_name}/db-password"
-  description             = "Database password"
-  recovery_window_in_days = 7
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {
@@ -78,8 +48,13 @@ resource "aws_secretsmanager_secret_version" "db_password" {
 
 resource "aws_secretsmanager_secret" "admin_jwt_secret" {
   name                    = "${var.project_name}/admin-jwt-secret"
-  description             = "Admin JWT Secret"
+  description             = "Strapi admin panel JWT secret"
   recovery_window_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-admin-jwt-secret"
+    Environment = var.environment
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "admin_jwt_secret" {
@@ -89,8 +64,13 @@ resource "aws_secretsmanager_secret_version" "admin_jwt_secret" {
 
 resource "aws_secretsmanager_secret" "api_token_salt" {
   name                    = "${var.project_name}/api-token-salt"
-  description             = "API Token Salt"
+  description             = "Salt for Strapi API token generation"
   recovery_window_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-api-token-salt"
+    Environment = var.environment
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "api_token_salt" {
@@ -100,8 +80,13 @@ resource "aws_secretsmanager_secret_version" "api_token_salt" {
 
 resource "aws_secretsmanager_secret" "app_keys" {
   name                    = "${var.project_name}/app-keys"
-  description             = "App Keys"
+  description             = "Strapi application keys (4 keys combined)"
   recovery_window_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-app-keys"
+    Environment = var.environment
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "app_keys" {
@@ -111,8 +96,13 @@ resource "aws_secretsmanager_secret_version" "app_keys" {
 
 resource "aws_secretsmanager_secret" "jwt_secret" {
   name                    = "${var.project_name}/jwt-secret"
-  description             = "JWT Secret"
+  description             = "Strapi JWT secret for user authentication"
   recovery_window_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-jwt-secret"
+    Environment = var.environment
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "jwt_secret" {
@@ -122,8 +112,13 @@ resource "aws_secretsmanager_secret_version" "jwt_secret" {
 
 resource "aws_secretsmanager_secret" "transfer_token_salt" {
   name                    = "${var.project_name}/transfer-token-salt"
-  description             = "Transfer Token Salt"
+  description             = "Salt for Strapi transfer token generation"
   recovery_window_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-transfer-token-salt"
+    Environment = var.environment
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "transfer_token_salt" {
@@ -133,8 +128,13 @@ resource "aws_secretsmanager_secret_version" "transfer_token_salt" {
 
 resource "aws_secretsmanager_secret" "encryption_key" {
   name                    = "${var.project_name}/encryption-key"
-  description             = "Encryption Key"
+  description             = "Strapi encryption key for sensitive data"
   recovery_window_in_days = 7
+
+  tags = {
+    Name        = "${var.project_name}-encryption-key"
+    Environment = var.environment
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "encryption_key" {

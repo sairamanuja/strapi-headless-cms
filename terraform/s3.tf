@@ -1,18 +1,12 @@
-# =============================================================================
-# S3 Bucket for Strapi Uploads
-# =============================================================================
-
 resource "aws_s3_bucket" "uploads" {
   bucket = var.s3_bucket_name
 
   tags = {
-    Name = "${var.project_name}-uploads"
+    Name        = "${var.project_name}-uploads"
+    Environment = var.environment
+    Purpose     = "Stores Strapi uploaded files"
   }
 }
-
-# =============================================================================
-# S3 Bucket Versioning
-# =============================================================================
 
 resource "aws_s3_bucket_versioning" "uploads" {
   bucket = aws_s3_bucket.uploads.id
@@ -21,10 +15,6 @@ resource "aws_s3_bucket_versioning" "uploads" {
     status = "Enabled"
   }
 }
-
-# =============================================================================
-# S3 Bucket Encryption
-# =============================================================================
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
   bucket = aws_s3_bucket.uploads.id
@@ -36,10 +26,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
   }
 }
 
-# =============================================================================
-# S3 Bucket Public Access Block
-# =============================================================================
-
 resource "aws_s3_bucket_public_access_block" "uploads" {
   bucket = aws_s3_bucket.uploads.id
 
@@ -48,10 +34,6 @@ resource "aws_s3_bucket_public_access_block" "uploads" {
   ignore_public_acls      = false
   restrict_public_buckets = false
 }
-
-# =============================================================================
-# S3 Bucket Policy for Public Read
-# =============================================================================
 
 resource "aws_s3_bucket_policy" "uploads" {
   bucket = aws_s3_bucket.uploads.id
@@ -71,10 +53,6 @@ resource "aws_s3_bucket_policy" "uploads" {
 
   depends_on = [aws_s3_bucket_public_access_block.uploads]
 }
-
-# =============================================================================
-# S3 Bucket CORS Configuration
-# =============================================================================
 
 resource "aws_s3_bucket_cors_configuration" "uploads" {
   bucket = aws_s3_bucket.uploads.id

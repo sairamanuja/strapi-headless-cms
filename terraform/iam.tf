@@ -1,7 +1,3 @@
-# =============================================================================
-# ECS Task Execution Role
-# =============================================================================
-
 resource "aws_iam_role" "ecs_execution" {
   name = "${var.project_name}-ecs-execution-role"
 
@@ -17,6 +13,12 @@ resource "aws_iam_role" "ecs_execution" {
       }
     ]
   })
+
+  tags = {
+    Name        = "${var.project_name}-ecs-execution-role"
+    Environment = var.environment
+    Purpose     = "Allows ECS to start containers"
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_execution" {
@@ -24,7 +26,6 @@ resource "aws_iam_role_policy_attachment" "ecs_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Policy for Secrets Manager access
 resource "aws_iam_role_policy" "ecs_execution_secrets" {
   name = "${var.project_name}-ecs-secrets-policy"
   role = aws_iam_role.ecs_execution.id
@@ -45,10 +46,6 @@ resource "aws_iam_role_policy" "ecs_execution_secrets" {
   })
 }
 
-# =============================================================================
-# ECS Task Role (for application access to AWS services)
-# =============================================================================
-
 resource "aws_iam_role" "ecs_task" {
   name = "${var.project_name}-ecs-task-role"
 
@@ -64,9 +61,14 @@ resource "aws_iam_role" "ecs_task" {
       }
     ]
   })
+
+  tags = {
+    Name        = "${var.project_name}-ecs-task-role"
+    Environment = var.environment
+    Purpose     = "Allows Strapi to access S3 and CloudWatch"
+  }
 }
 
-# Policy for S3 access
 resource "aws_iam_role_policy" "ecs_task_s3" {
   name = "${var.project_name}-ecs-s3-policy"
   role = aws_iam_role.ecs_task.id
@@ -91,7 +93,6 @@ resource "aws_iam_role_policy" "ecs_task_s3" {
   })
 }
 
-# Policy for CloudWatch Logs
 resource "aws_iam_role_policy" "ecs_task_logs" {
   name = "${var.project_name}-ecs-logs-policy"
   role = aws_iam_role.ecs_task.id

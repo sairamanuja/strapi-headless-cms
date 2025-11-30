@@ -1,7 +1,3 @@
-# =============================================================================
-# ECR Repository
-# =============================================================================
-
 resource "aws_ecr_repository" "strapi" {
   name                 = var.project_name
   image_tag_mutability = "MUTABLE"
@@ -15,13 +11,10 @@ resource "aws_ecr_repository" "strapi" {
   }
 
   tags = {
-    Name = "${var.project_name}-ecr"
+    Name        = "${var.project_name}-ecr"
+    Environment = var.environment
   }
 }
-
-# =============================================================================
-# ECR Lifecycle Policy
-# =============================================================================
 
 resource "aws_ecr_lifecycle_policy" "strapi" {
   repository = aws_ecr_repository.strapi.name
@@ -32,9 +25,9 @@ resource "aws_ecr_lifecycle_policy" "strapi" {
         rulePriority = 1
         description  = "Keep last 10 images"
         selection = {
-          tagStatus     = "any"
-          countType     = "imageCountMoreThan"
-          countNumber   = 10
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
         }
         action = {
           type = "expire"

@@ -11,15 +11,6 @@ terraform {
       version = "~> 3.0"
     }
   }
-
-  # Uncomment to use S3 backend for remote state
-  # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
-  #   key            = "strapi/terraform.tfstate"
-  #   region         = "ap-south-1"
-  #   encrypt        = true
-  #   dynamodb_table = "terraform-locks"
-  # }
 }
 
 provider "aws" {

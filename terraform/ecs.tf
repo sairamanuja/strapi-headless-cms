@@ -1,37 +1,31 @@
-# =============================================================================
-# CloudWatch Log Group
-# =============================================================================
-
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = 30
 
   tags = {
-    Name = "${var.project_name}-logs"
+    Name        = "${var.project_name}-logs"
+    Environment = var.environment
   }
 }
-
-# =============================================================================
-# ECS Cluster
-# =============================================================================
 
 resource "aws_ecs_cluster" "main" {
   name = "${var.project_name}-cluster"
 
   setting {
     name  = "containerInsights"
-    value = "enabled"
+    value = "disabled"
   }
 
   tags = {
-    Name = "${var.project_name}-cluster"
+    Name        = "${var.project_name}-cluster"
+    Environment = var.environment
   }
 }
 
 resource "aws_ecs_cluster_capacity_providers" "main" {
   cluster_name = aws_ecs_cluster.main.name
 
-  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+  capacity_providers = ["FARGATE"]
 
   default_capacity_provider_strategy {
     base              = 1
@@ -39,10 +33,6 @@ resource "aws_ecs_cluster_capacity_providers" "main" {
     capacity_provider = "FARGATE"
   }
 }
-
-# =============================================================================
-# ECS Task Definition
-# =============================================================================
 
 resource "aws_ecs_task_definition" "main" {
   family                   = "${var.project_name}-task"
@@ -127,13 +117,10 @@ resource "aws_ecs_task_definition" "main" {
   ])
 
   tags = {
-    Name = "${var.project_name}-task"
+    Name        = "${var.project_name}-task"
+    Environment = var.environment
   }
 }
-
-# =============================================================================
-# ECS Service
-# =============================================================================
 
 resource "aws_ecs_service" "main" {
   name            = "${var.project_name}-service"
@@ -143,15 +130,9 @@ resource "aws_ecs_service" "main" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
+    subnets          = [aws_subnet.public.id]
     security_groups  = [aws_security_group.ecs.id]
-    assign_public_ip = false
-  }
-
-  load_balancer {
-    target_group_arn = aws_lb_target_group.main.arn
-    container_name   = var.project_name
-    container_port   = var.container_port
+    assign_public_ip = true
   }
 
   deployment_maximum_percent         = 200
@@ -163,12 +144,12 @@ resource "aws_ecs_service" "main" {
   }
 
   depends_on = [
-    aws_lb_listener.http,
     aws_iam_role_policy.ecs_execution_secrets
   ]
 
   tags = {
-    Name = "${var.project_name}-service"
+    Name        = "${var.project_name}-service"
+    Environment = var.environment
   }
 
   lifecycle {
