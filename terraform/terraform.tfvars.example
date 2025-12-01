@@ -18,4 +18,4 @@ ecs_memory        = 512
 ecs_desired_count = 1
 container_port    = 1337
 
-s3_bucket_name = "strapi-uploads-ram" 
+s3_bucket_name = "your-unique-bucket-name"
